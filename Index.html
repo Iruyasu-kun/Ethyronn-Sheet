@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ethyronn Character Sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #131A2B;
+    --ink-raised: #1C2438;
+    --vellum: #E8DCC4;
+    --vellum-dim: #9A8F7A;
+    --gilt: #C9A227;
+    --blood: #8C2F2F;
+    --arcane: #5B7C99;
+    --moss: #4A6B4F;
+    --radius: 4px;
+    --font-display: 'Cinzel', serif;
+    --font-body: 'Spectral', serif;
+    --font-data: 'JetBrains Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    background: var(--ink);
+    color: var(--vellum);
+    min-height: 100vh;
+  }
+  .celestial-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    color: var(--gilt);
+    opacity: 0.25;
+    overflow: hidden;
+  }
+  .celestial-bg svg { width: 100%; height: 100%; display: block; }
+  #app { position: relative; z-index: 1; }
+  h1, h2, h3, h4 {
+    margin: 0 0 10px 0;
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-wrap: balance;
+    color: var(--vellum);
+  }
+  a { color: var(--gilt); }
+  :focus-visible { outline: 2px solid var(--gilt); outline-offset: 2px; }
+  button {
+    font-family: var(--font-body);
+    background: var(--ink-raised);
+    color: var(--vellum);
+    border: 1px solid rgba(201,162,39,0.35);
+    border-radius: var(--radius);
+    padding: 7px 14px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  button:hover:not(:disabled) { border-color: var(--gilt); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.primary { background: var(--gilt); color: var(--ink); border-color: var(--gilt); font-weight: 600; }
+  button.danger { background: rgba(140,47,47,0.22); border-color: var(--blood); }
+  button.ghost { background: transparent; }
+  button.small { padding: 3px 10px; font-size: 12px; }
+  input[type=text], input[type=number], textarea, select {
+    font-family: var(--font-body);
+    background: var(--ink);
+    color: var(--vellum);
+    border: 1px solid rgba(201,162,39,0.3);
+    border-radius: var(--radius);
+    padding: 7px 9px;
+    font-size: 14px;
+  }
+  input[type=number], .data-num {
+    font-family: var(--font-data);
+    font-variant-numeric: tabular-nums;
+  }
+  /* Inputs fill their labeled field by default; an inline style or a more specific
+     class (like .attr-rank-input) still wins where a field is deliberately narrow. */
+  .field input, .field select, .field textarea { width: 100%; }
+  /* No spinner arrows anywhere — the app already has explicit +/- steppers where needed. */
+  input[type=number] { -moz-appearance: textfield; }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  textarea { resize: vertical; width: 100%; }
+  label { font-size: 12px; color: var(--vellum-dim); display: block; margin-bottom: 3px; letter-spacing: 0.02em; }
+  .app-header {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--ink-raised); border-bottom: 1px solid rgba(201,162,39,0.3);
+    padding: 12px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
+  .app-header.session-active {
+    background: linear-gradient(180deg, rgba(140,47,47,0.20), var(--ink-raised));
+    border-bottom-color: var(--blood);
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .char-name-block { display: flex; flex-direction: column; gap: 2px; }
+  .char-name { font-family: var(--font-display); font-size: 17px; }
+  .char-switcher { max-width: 200px; }
+  .spacer { flex: 1; }
+  .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .session-btn { min-width: 130px; }
+  .storage-note { font-size: 11px; color: var(--vellum-dim); margin: 6px 20px 0 20px; }
+  .incap-banner {
+    background: rgba(140,47,47,0.25); color: var(--vellum); border: 1px solid var(--blood);
+    padding: 10px 14px; border-radius: var(--radius); font-weight: 600;
+    margin-bottom: 14px; text-align: center;
+  }
+  .container { max-width: 880px; margin: 0 auto; padding: 18px 20px 60px; }
+  .panel {
+    background: var(--ink-raised);
+    border: 1px solid rgba(201,162,39,0.3);
+    border-radius: var(--radius);
+    box-shadow: inset 0 0 0 1px rgba(201,162,39,0.12);
+    padding: 16px 18px;
+    margin-bottom: 16px;
+  }
+  .session-panel { border-color: var(--blood); box-shadow: inset 0 0 0 1px rgba(140,47,47,0.2); }
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 16px; }
+  .tab-btn { border-radius: var(--radius) var(--radius) 0 0; font-size: 13px; }
+  .tab-btn.active { background: var(--gilt); color: var(--ink); border-color: var(--gilt); font-weight: 600; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .field { margin-bottom: 10px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  .attr-row {
+    display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid rgba(201,162,39,0.15);
+    flex-wrap: wrap;
+  }
+  .attr-row:last-child { border-bottom: none; }
+  .attr-name { width: 130px; font-weight: 600; }
+  .attr-stepper { display: flex; align-items: center; gap: 6px; }
+  .attr-rank-input { width: 64px; text-align: center; }
+  .attr-preview { color: var(--vellum-dim); font-size: 13px; flex: 1; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+  .over-cap { color: var(--blood); font-weight: 600; }
+  .muted { color: var(--vellum-dim); font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .list-item-card { background: var(--ink); border: 1px solid rgba(201,162,39,0.2); border-radius: var(--radius); padding: 12px; margin-bottom: 10px; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .empty-hint { color: var(--vellum-dim); font-size: 14px; font-style: italic; padding: 10px 0; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; background: var(--ink); border: 1px solid rgba(201,162,39,0.3); letter-spacing: 0.03em; }
+  .pill.buff { border-color: var(--moss); color: var(--moss); }
+  .pill.debuff { border-color: var(--blood); color: var(--blood); }
+  .log-entry { padding: 7px 0; border-bottom: 1px solid rgba(201,162,39,0.15); font-size: 13px; }
+  .log-entry .ts { color: var(--vellum-dim); font-size: 11px; font-family: var(--font-data); }
+  .log-entry .type { color: var(--gilt); font-weight: 600; margin-right: 6px; font-family: var(--font-data); font-size: 11px; text-transform: uppercase; }
+  .avatar-lg { width: 76px; height: 76px; border-radius: var(--radius); object-fit: cover; background: var(--ink); border: 1px solid rgba(201,162,39,0.3); }
+  .avatar-placeholder { display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 24px; color: var(--vellum-dim); }
+  .sprite-block { flex: 0 0 auto; }
+  .identity-fields { flex: 1; min-width: 240px; }
+
+  /* Tier medallion */
+  .tier-medallion { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .tier-medallion .disc {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ecd07f, var(--gilt) 60%, #7d611a 100%);
+    border: 2px solid var(--gilt);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink); font-family: var(--font-display); font-weight: 700; font-size: 22px;
+    box-shadow: 0 0 0 3px var(--ink), 0 2px 6px rgba(0,0,0,0.45);
+  }
+  .tier-medallion .tier-name {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--gilt);
+  }
+
+  /* Filling vessels */
+  .vessel-row { display: flex; gap: 24px; align-items: flex-end; flex-wrap: wrap; }
+  .vessel { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .vessel-tube {
+    width: 34px; height: 130px; border-radius: 15px; background: var(--ink);
+    border: 1px solid rgba(201,162,39,0.35); position: relative; overflow: hidden;
+  }
+  .vessel-fill { position: absolute; left: 0; right: 0; bottom: 0; transition: height 0.4s ease; }
+  .vessel-fill.hp { background: linear-gradient(to top, var(--blood), #b25252); }
+  .vessel-fill.mp { background: linear-gradient(to top, var(--arcane), #86accf); }
+  .vessel-label { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 13px; white-space: nowrap; }
+  .session-controls { display: flex; gap: 14px; flex-wrap: wrap; flex: 1 1 260px; min-width: 260px; }
+
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--ink-raised); border: 1px solid var(--gilt); color: var(--vellum);
+    padding: 10px 16px; border-radius: var(--radius); z-index: 300; max-width: 90%;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5); font-size: 13px;
+  }
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 400;
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-box {
+    background: var(--ink-raised); border: 1px solid rgba(201,162,39,0.4); border-radius: var(--radius);
+    padding: 22px; max-width: 440px; width: 100%;
+  }
+  .modal-box p { margin: 0 0 16px 0; line-height: 1.5; }
+
+  .onboarding-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .onboarding-card { max-width: 380px; width: 100%; }
+
+  .error-screen { max-width: 700px; margin: 60px auto; background: var(--ink-raised); border: 1px solid var(--blood); border-radius: var(--radius); padding: 24px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+  @media (max-width: 390px) {
+    .container { padding: 14px 12px 50px; }
+    .attr-name { width: 100%; }
+    .session-controls { min-width: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="celestial-bg" aria-hidden="true">
+  <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+    <defs>
+      <pattern id="starTile" width="140" height="140" patternUnits="userSpaceOnUse">
+        <circle cx="15" cy="20" r="1.3" fill="currentColor"/>
+        <circle cx="60" cy="45" r="1" fill="currentColor"/>
+        <circle cx="110" cy="15" r="1.6" fill="currentColor"/>
+        <circle cx="30" cy="90" r="1" fill="currentColor"/>
+        <circle cx="85" cy="110" r="1.4" fill="currentColor"/>
+        <circle cx="125" cy="70" r="0.9" fill="currentColor"/>
+        <path d="M44,120 L56,120 M50,114 L50,126" stroke="currentColor" stroke-width="0.6"/>
+        <path d="M94,50 L106,50 M100,44 L100,56" stroke="currentColor" stroke-width="0.6"/>
+      </pattern>
+    </defs>
+    <rect width="1600" height="900" fill="url(#starTile)"/>
+    <!-- astrolabe ring, top-right -->
+    <g fill="none" stroke="currentColor" stroke-width="1.2">
+      <circle cx="1300" cy="200" r="90"/>
+      <circle cx="1300" cy="200" r="150"/>
+      <circle cx="1300" cy="200" r="210"/>
+      <path d="M1450,200 L1530,200 M1406,306 L1463,363 M1300,350 L1300,430 M1194,306 L1137,363 M1150,200 L1070,200 M1194,94 L1137,37 M1300,50 L1300,-30 M1406,94 L1463,37"/>
+    </g>
+    <g fill="currentColor">
+      <circle cx="1450" cy="200" r="3.5"/>
+      <circle cx="1406" cy="306" r="3.5"/>
+      <circle cx="1300" cy="350" r="3.5"/>
+      <circle cx="1194" cy="306" r="3.5"/>
+      <circle cx="1150" cy="200" r="3.5"/>
+      <circle cx="1194" cy="94" r="3.5"/>
+      <circle cx="1300" cy="50" r="3.5"/>
+      <circle cx="1406" cy="94" r="3.5"/>
+      <circle cx="1300" cy="200" r="4.5"/>
+    </g>
+    <!-- compass rose, bottom-left -->
+    <g fill="none" stroke="currentColor" stroke-width="1">
+      <circle cx="120" cy="780" r="80"/>
+      <circle cx="120" cy="780" r="108"/>
+      <path d="M20,780 L220,780 M120,680 L120,880 M49,709 L191,851 M191,709 L49,851"/>
+    </g>
+    <circle cx="120" cy="780" r="4" fill="currentColor"/>
+  </svg>
+</div>
+<div id="app"></div>
+
+<script>
+/* ============================== CONFIG ============================== */
+/* All balance numbers live here. No magic numbers elsewhere in the code. */
+const CONFIG = {
+  schemaVersion: 2,
+  tierOptions: ["Novice", "Seasoned", "Veteran", "Elite", "Legendary"],
+  upCost: {
+    hp:                { pointsPerUP: 3 },
+    mp:                { pointsPerUP: 3 },
+    armsPower:         { pointsPerUP: 1 },
+    virtuosity:        { pointsPerUP: 1 },
+    resilience:        { pointsPerUP: 1 },
+    inventoryCapacity: { pointsPerUP: 1 }
+  },
+  baseInventoryCapacity: 10,
+  startingAttributes: {
+    hp: 0, mp: 0, armsPower: 0, virtuosity: 0, resilience: 0, inventoryCapacity: 0
+  },
+  derivedBase: {
+    hp: 20,
+    mp: 10,
+    physicalDamage: 5,
+    physicalDamagePerArmsPower: 2,
+    magicDamage: 5,
+    magicDamagePerVirtuosity: 2,
+    defense: 5,
+    defensePerResilience: 1
+  },
+  startingInventory: [
+    { name: "HP Potion", qty: 3, type: "Consumable", description: "" },
+    { name: "MP Potion", qty: 3, type: "Consumable", description: "" },
+    { name: "Phoenix Fruit", qty: 1, type: "Consumable", description: "" }
+  ],
+  inventoryTypes: ["Consumable", "Miscellaneous", "Quest Item"],
+  storageKey: "ttrpg-characters"
+};
+
+/* ============================== UTIL ============================== */
+function uid() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+function todayStamp() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function attrLabel(key) {
+  return { hp:"HP", mp:"MP", armsPower:"Arms Power", virtuosity:"Virtuosity", resilience:"Resilience", inventoryCapacity:"Carry Capacity" }[key] || key;
+}
+// Plain browsers (GitHub Pages, a local file) get a normal <a download> link.
+// Inside a sandboxed embed that exposes window.claude (e.g. a Claude Artifact
+// preview), that link is inert, so we offer the file through the host's
+// downloads capability instead — same export, whichever way this page is opened.
+async function download(filename, text) {
+  if (typeof window.claude !== "undefined" && window.claude && typeof window.claude.use === "function") {
+    const downloads = await window.claude.use("downloads").catch(() => null);
+    if (downloads) {
+      try {
+        await downloads.save({ filename, data: text });
+        showToast(`Saved ${filename}`);
+      } catch (err) {
+        if (!err || err.code !== "declined") {
+          showToast("Could not save the file: " + ((err && err.message) || "unknown error"));
+        }
+      }
+    } else {
+      showToast("File saving isn't available in this preview — open the standalone app to export.");
+    }
+    return;
+  }
+  const blob = new Blob([text], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* In-app toast/confirm — no native browser dialogs, so this works the same
+   inside sandboxed embeds as it does on a normal page. */
+function showToast(message) {
+  uiState.toast = { message };
+  render();
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(() => { uiState.toast = null; render(); }, 3500);
+}
+function showConfirm(message, onConfirm, opts) {
+  opts = opts || {};
+  uiState.confirmDialog = { message, onConfirm, confirmLabel: opts.confirmLabel || "Confirm", danger: opts.danger !== false };
+  render();
+}
+
+/* ============================== DERIVED ============================== */
+function computeDerived(char) {
+  const b = char.base;
+  const d = CONFIG.derivedBase;
+  return {
+    maxHP: d.hp + b.hp,
+    maxMP: d.mp + b.mp,
+    physicalDamage: d.physicalDamage + b.armsPower * d.physicalDamagePerArmsPower,
+    magicDamage: d.magicDamage + b.virtuosity * d.magicDamagePerVirtuosity,
+    defense: d.defense + b.resilience * d.defensePerResilience,
+    inventoryCapacity: CONFIG.baseInventoryCapacity + b.inventoryCapacity
+  };
+}
+function totalInventoryQty(char) { return char.inventory.reduce((s,i)=>s+i.qty,0); }
+
+/* ============================== CHARACTER FACTORY ============================== */
+function createCharacter(name) {
+  const char = {
+    id: uid(),
+    identity: { name: name || "Unnamed Character", sprite: null, class: "", gender: "", age: "", race: "" },
+    progression: { tier: CONFIG.tierOptions[0], availableUP: 0, accumulatedUP: 0, availableSP: 0 },
+    base: { ...CONFIG.startingAttributes },
+    racialTraits: [],
+    skills: [],
+    inventory: CONFIG.startingInventory.map(i => ({ id: uid(), ...i })),
+    buffs: [],
+    current: { hp: 0, mp: 0, incapacitated: false },
+    sessionActive: false,
+    log: []
+  };
+  const d = computeDerived(char);
+  char.current.hp = d.maxHP;
+  char.current.mp = d.maxMP;
+  return char;
+}
+
+/* ============================== STATE ============================== */
+let state = null; // { schemaVersion, characters: [...], activeCharacterId }
+let uiState = { activeTab: "identity", loadError: null, rawBackup: null, showOnboarding: false, toast: null, confirmDialog: null };
+
+function defaultState() {
+  return { schemaVersion: CONFIG.schemaVersion, characters: [], activeCharacterId: null };
+}
+
+function normalizeInventoryType(t) {
+  const s = String(t || "").toLowerCase();
+  if (s.startsWith("consum")) return "Consumable";
+  if (s.startsWith("quest")) return "Quest Item";
+  return "Miscellaneous";
+}
+// Migrates a v1 save (auto-tracked UP/SP economy) into the v2 shape (manual
+// tier + point pools). Preserves everything that still has a home; converts
+// the old "available" totals into the new directly-editable pool fields.
+function migrateV1ToV2(raw) {
+  const OLD_TIERS = [
+    { name: "Novice", min: 0, max: 50 },
+    { name: "Seasoned", min: 51, max: 100 },
+    { name: "Veteran", min: 101, max: 170 },
+    { name: "Elite", min: 171, max: 300 },
+    { name: "Legendary", min: 301, max: Infinity }
+  ];
+  const characters = (raw.characters || []).map(c => {
+    const oldP = c.progression || {};
+    const earnedUP = oldP.earnedUP || 0;
+    const oldTier = OLD_TIERS.find(t => earnedUP >= t.min && earnedUP <= t.max) || OLD_TIERS[OLD_TIERS.length - 1];
+    const oldIdentity = c.identity || {};
+    return {
+      id: c.id || uid(),
+      identity: {
+        name: oldIdentity.name || "", sprite: oldIdentity.sprite || null,
+        class: oldIdentity.class || "", gender: oldIdentity.gender || "",
+        age: oldIdentity.age || "", race: ""
+      },
+      progression: {
+        tier: oldTier.name,
+        availableUP: (oldP.earnedUP || 0) + (oldP.bonusUP || 0) - (oldP.spentUP || 0),
+        accumulatedUP: oldP.earnedUP || 0,
+        availableSP: (oldP.earnedSP || 0) - (oldP.spentSP || 0) - (oldP.tradedSP || 0)
+      },
+      base: c.base || { ...CONFIG.startingAttributes },
+      racialTraits: c.racialTraits || [],
+      skills: c.skills || [],
+      inventory: (c.inventory || []).map(i => ({ id: i.id || uid(), name: i.name || "", qty: i.qty || 0, type: normalizeInventoryType(i.type), description: i.description || "" })),
+      buffs: c.buffs || [],
+      current: c.current || { hp: 0, mp: 0, incapacitated: false },
+      sessionActive: !!c.playMode,
+      log: c.log || []
+    };
+  });
+  return { schemaVersion: 2, characters, activeCharacterId: raw.activeCharacterId || (characters[0] && characters[0].id) || null };
+}
+
+function migrateData(raw) {
+  if (!raw || typeof raw !== "object") return { ok:false, reason: "Stored data is not a valid object." };
+  if (typeof raw.schemaVersion !== "number") return { ok:false, reason: "Stored data has no schemaVersion." };
+  if (raw.schemaVersion === CONFIG.schemaVersion) return { ok:true, data: raw };
+  if (raw.schemaVersion > CONFIG.schemaVersion) {
+    return { ok:false, reason: `Stored data is schema v${raw.schemaVersion}, newer than this app (v${CONFIG.schemaVersion}). Update the app.` };
+  }
+  if (raw.schemaVersion === 1) {
+    return migrateData(migrateV1ToV2(raw));
+  }
+  return { ok:false, reason: `No migration path from schema v${raw.schemaVersion} to v${CONFIG.schemaVersion}.` };
+}
+
+function loadState() {
+  const raw = localStorage.getItem(CONFIG.storageKey);
+  if (!raw) { state = defaultState(); return; }
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch (e) {
+    uiState.loadError = "Stored data is corrupted JSON and could not be parsed.";
+    uiState.rawBackup = raw;
+    return;
+  }
+  const result = migrateData(parsed);
+  if (!result.ok) {
+    uiState.loadError = result.reason;
+    uiState.rawBackup = raw;
+    return;
+  }
+  state = result.data;
+  state.characters.forEach(normalizeCharacterFields);
+  if (!state.activeCharacterId && state.characters.length) state.activeCharacterId = state.characters[0].id;
+}
+// Fills in defaults for fields added after a character was first saved under the
+// current schemaVersion (accumulatedUP, item description) without needing a bump.
+function normalizeCharacterFields(char) {
+  if (char.progression.accumulatedUP === undefined) char.progression.accumulatedUP = 0;
+  char.inventory.forEach(i => { if (i.description === undefined) i.description = ""; });
+}
+
+function saveState() {
+  localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
+}
+function persistAndRender() { saveState(); render(); }
+function getActiveChar() {
+  return state.characters.find(c => c.id === state.activeCharacterId) || null;
+}
+
+/* ============================== EVENT LOG / UNDO ============================== */
+function snapshotChar(char) {
+  return JSON.parse(JSON.stringify({
+    base: char.base, progression: char.progression, current: char.current,
+    skills: char.skills, inventory: char.inventory, buffs: char.buffs
+  }));
+}
+function recordAction(char, type, mutateFn, buildDetail) {
+  const snapshot = snapshotChar(char);
+  mutateFn();
+  const detail = buildDetail ? buildDetail() : {};
+  char.log.unshift({ id: uid(), timestamp: new Date().toISOString(), type, amount: detail.amount ?? null, detail, _prev: snapshot });
+}
+function undoLast(char) {
+  if (!char.log.length) return;
+  const entry = char.log[0];
+  if (!entry._prev) { showToast("This event can't be undone."); return; }
+  Object.assign(char.base, entry._prev.base);
+  Object.assign(char.progression, entry._prev.progression);
+  Object.assign(char.current, entry._prev.current);
+  char.skills = entry._prev.skills;
+  char.inventory = entry._prev.inventory;
+  char.buffs = entry._prev.buffs;
+  char.log.shift();
+  persistAndRender();
+}
+
+/* ============================== ACTIONS ============================== */
+function changeAttribute(char, key, direction) {
+  const cost = CONFIG.upCost[key].pointsPerUP;
+  if (direction > 0) {
+    if (char.progression.availableUP < 1) { showToast("No UP available."); return; }
+    recordAction(char, "attributeChange", () => {
+      char.base[key] += cost;
+      char.progression.availableUP -= 1;
+    }, () => ({ message: `Spent 1 UP on ${attrLabel(key)} (+${cost})` }));
+  } else {
+    const floor = CONFIG.startingAttributes[key];
+    if (char.base[key] - cost < floor) { showToast("Can't go below the starting value."); return; }
+    recordAction(char, "attributeChange", () => {
+      char.base[key] -= cost;
+      char.progression.availableUP += 1;
+      clampCurrentToMax(char);
+    }, () => ({ message: `Refunded 1 UP from ${attrLabel(key)} (-${cost})` }));
+  }
+  persistAndRender();
+}
+function clampCurrentToMax(char) {
+  const d = computeDerived(char);
+  if (char.current.hp > d.maxHP) char.current.hp = d.maxHP;
+  if (char.current.mp > d.maxMP) char.current.mp = d.maxMP;
+}
+function editAttributeRank(char, key, value) {
+  const floor = CONFIG.startingAttributes[key];
+  const val = Math.max(floor, Math.floor(Number(value)));
+  if (!Number.isFinite(val)) return;
+  char.base[key] = val;
+  clampCurrentToMax(char);
+  persistAndRender();
+}
+function unlockSkill(char, skillId) {
+  const skill = char.skills.find(s => s.id === skillId);
+  if (!skill || skill.unlocked) return;
+  recordAction(char, "skillUnlock", () => {
+    char.progression.availableSP -= skill.spCost;
+    skill.unlocked = true;
+  }, () => ({ message: `Unlocked "${skill.name}" (-${skill.spCost} skill points)` }));
+  persistAndRender();
+}
+function addInventoryItem(char, name, qty, type, description) {
+  if (!name || !name.trim()) return;
+  qty = Math.max(0, Math.floor(Number(qty) || 0));
+  char.inventory.push({ id: uid(), name: name.trim(), qty, type: type || CONFIG.inventoryTypes[1], description: description || "" });
+  persistAndRender();
+}
+function removeInventoryItem(char, itemId) {
+  char.inventory = char.inventory.filter(i => i.id !== itemId);
+  persistAndRender();
+}
+function takeDamage(char, amount) {
+  if (char.current.incapacitated || !(amount > 0)) return;
+  recordAction(char, "damage", () => {
+    char.current.hp = Math.max(0, char.current.hp - amount);
+    if (char.current.hp === 0) char.current.incapacitated = true;
+  }, () => { const d = computeDerived(char); return { amount, message: `Took ${amount} damage (${char.current.hp}/${d.maxHP} HP)` }; });
+  persistAndRender();
+}
+function healChar(char, amount) {
+  if (char.current.incapacitated || !(amount > 0)) return;
+  recordAction(char, "heal", () => {
+    const d = computeDerived(char);
+    char.current.hp = Math.min(d.maxHP, char.current.hp + amount);
+  }, () => { const d = computeDerived(char); return { amount, message: `Healed ${amount} (${char.current.hp}/${d.maxHP} HP)` }; });
+  persistAndRender();
+}
+function spendMP(char, amount) {
+  if (!(amount > 0)) return;
+  recordAction(char, "mpSpend", () => { char.current.mp = Math.max(0, char.current.mp - amount); },
+    () => { const d = computeDerived(char); return { amount, message: `Spent ${amount} MP (${char.current.mp}/${d.maxMP} MP)` }; });
+  persistAndRender();
+}
+function restoreMP(char, amount) {
+  if (!(amount > 0)) return;
+  recordAction(char, "mpRestore", () => { const d = computeDerived(char); char.current.mp = Math.min(d.maxMP, char.current.mp + amount); },
+    () => { const d = computeDerived(char); return { amount, message: `Restored ${amount} MP (${char.current.mp}/${d.maxMP} MP)` }; });
+  persistAndRender();
+}
+function addBuff(char, kind, name, description, duration) {
+  if (!name || !name.trim()) return;
+  recordAction(char, "buffAdd", () => {
+    char.buffs.push({ id: uid(), kind, name: name.trim(), description: description || "", duration: duration || "" });
+  }, () => ({ message: `Added ${kind} "${name.trim()}"` }));
+  persistAndRender();
+}
+function removeBuffFn(char, buffId) {
+  const b = char.buffs.find(x => x.id === buffId);
+  recordAction(char, "buffRemove", () => { char.buffs = char.buffs.filter(x => x.id !== buffId); },
+    () => ({ message: `Removed ${b ? b.kind : ""} "${b ? b.name : ""}"` }));
+  persistAndRender();
+}
+function addNote(char, text) {
+  if (!text || !text.trim()) return;
+  recordAction(char, "note", () => {}, () => ({ message: text.trim() }));
+  persistAndRender();
+}
+function startSession(char) {
+  recordAction(char, "note", () => {
+    const d = computeDerived(char);
+    char.current.hp = d.maxHP;
+    char.current.mp = d.maxMP;
+    char.current.incapacitated = false;
+    char.sessionActive = true;
+  }, () => ({ message: "Session started — HP and MP restored to full" }));
+  persistAndRender();
+}
+function endSession(char) {
+  recordAction(char, "note", () => {
+    const d = computeDerived(char);
+    char.current.hp = d.maxHP;
+    char.current.mp = d.maxMP;
+    char.current.incapacitated = false;
+    char.buffs = char.buffs.filter(b => !b.duration);
+    char.sessionActive = false;
+  }, () => ({ message: "Session ended — HP and MP restored to full, expired effects cleared" }));
+  persistAndRender();
+  showConfirm("Session ended. Export your JSON backup now?", () => exportAll(), { confirmLabel: "Export now", danger: false });
+}
+
+/* ============================== EXPORT / IMPORT ============================== */
+function exportAll() {
+  download(`characters-${todayStamp()}.json`, JSON.stringify(state, null, 2));
+}
+function exportRawBackup() {
+  download(`ttrpg-raw-backup-${todayStamp()}.json`, uiState.rawBackup || "{}");
+}
+function importFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    let parsed;
+    try { parsed = JSON.parse(reader.result); }
+    catch (e) { showToast("That file is not valid JSON."); return; }
+    const result = migrateData(parsed);
+    if (!result.ok) { showToast("Import failed: " + result.reason); return; }
+    showConfirm(`This will replace all ${state.characters.length} character(s) currently saved here with ${result.data.characters.length} character(s) from the file. Continue?`, () => {
+      state = result.data;
+      uiState.loadError = null;
+      persistAndRender();
+    }, { confirmLabel: "Replace" });
+  };
+  reader.readAsText(file);
+}
+
+/* ============================== CHARACTER MGMT ============================== */
+function openOnboarding() {
+  uiState.showOnboarding = true;
+  render();
+}
+function createCharacterFromOnboarding(name, className) {
+  const char = createCharacter(name && name.trim() ? name.trim() : "Unnamed Character");
+  char.identity.class = className ? className.trim() : "";
+  state.characters.push(char);
+  state.activeCharacterId = char.id;
+  uiState.showOnboarding = false;
+  uiState.activeTab = "identity";
+  persistAndRender();
+}
+function duplicateCharacter(charId) {
+  const src = state.characters.find(c => c.id === charId);
+  if (!src) return;
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = uid();
+  copy.identity.name = (copy.identity.name || "Character") + " (copy)";
+  state.characters.push(copy);
+  state.activeCharacterId = copy.id;
+  persistAndRender();
+}
+function deleteCharacter(charId) {
+  const c = state.characters.find(x => x.id === charId);
+  if (!c) return;
+  showConfirm(`Delete "${c.identity.name}"? This cannot be undone.`, () => {
+    state.characters = state.characters.filter(x => x.id !== charId);
+    if (state.activeCharacterId === charId) {
+      state.activeCharacterId = state.characters.length ? state.characters[0].id : null;
+    }
+    persistAndRender();
+  }, { confirmLabel: "Delete" });
+}
+function selectCharacter(charId) {
+  state.activeCharacterId = charId;
+  persistAndRender();
+}
+
+/* ============================== RENDER: ROOT ============================== */
+function render() {
+  const root = document.getElementById("app");
+
+  if (uiState.loadError) {
+    root.innerHTML = renderErrorScreen() + renderOverlay();
+    wireErrorScreen();
+    wireOverlay();
+    return;
+  }
+
+  if (state.characters.length === 0 || uiState.showOnboarding) {
+    root.innerHTML = renderOnboarding() + renderOverlay();
+    wireOnboarding();
+    wireOverlay();
+    return;
+  }
+
+  const char = getActiveChar();
+  root.innerHTML = `
+    ${renderHeader(char)}
+    <p class="storage-note">Data stays in this browser only. Export is your only real backup.</p>
+    <div class="container">
+      ${char.sessionActive ? renderSessionPanel(char) : ""}
+      ${renderTabs(char)}
+    </div>
+    ${renderOverlay()}
+  `;
+  wireEvents();
+  wireOverlay();
+}
+
+function renderOverlay() {
+  let html = "";
+  if (uiState.toast) html += `<div class="toast">${esc(uiState.toast.message)}</div>`;
+  if (uiState.confirmDialog) {
+    const cd = uiState.confirmDialog;
+    html += `
+      <div class="modal-backdrop">
+        <div class="modal-box">
+          <p>${esc(cd.message)}</p>
+          <div class="row" style="justify-content:flex-end;">
+            <button id="confirm-no-btn">Cancel</button>
+            <button id="confirm-yes-btn" class="${cd.danger ? "danger" : "primary"}">${esc(cd.confirmLabel)}</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  return html;
+}
+function wireOverlay() {
+  const yes = document.getElementById("confirm-yes-btn");
+  if (yes) yes.addEventListener("click", () => {
+    const cb = uiState.confirmDialog && uiState.confirmDialog.onConfirm;
+    uiState.confirmDialog = null;
+    if (cb) cb();
+    render();
+  });
+  const no = document.getElementById("confirm-no-btn");
+  if (no) no.addEventListener("click", () => { uiState.confirmDialog = null; render(); });
+}
+
+function renderErrorScreen() {
+  return `
+    <div class="error-screen">
+      <h2 style="color:var(--blood)">Could not load saved data</h2>
+      <p>${esc(uiState.loadError)}</p>
+      <p class="muted">Your stored data has NOT been changed. You can save a raw backup now, or import a valid backup below.</p>
+      <div class="row">
+        <button id="btn-export-raw" class="primary">Export raw backup</button>
+        <label class="ghost" style="display:inline-flex;align-items:center;padding:7px 14px;border:1px solid rgba(201,162,39,0.35);border-radius:var(--radius);cursor:pointer;">
+          Import a backup file
+          <input type="file" id="err-import-input" accept="application/json" style="display:none">
+        </label>
+        <button id="btn-discard-invalid" class="danger">Discard this data &amp; start fresh</button>
+      </div>
+    </div>
+  `;
+}
+function wireErrorScreen() {
+  const btn = document.getElementById("btn-export-raw");
+  if (btn) btn.addEventListener("click", exportRawBackup);
+  const inp = document.getElementById("err-import-input");
+  if (inp) inp.addEventListener("change", (e) => { if (e.target.files[0]) importFile(e.target.files[0]); });
+  const discard = document.getElementById("btn-discard-invalid");
+  if (discard) discard.addEventListener("click", () => {
+    showConfirm("This will permanently delete the unreadable data and start over with an empty character list. This cannot be undone. Continue?", () => {
+      localStorage.removeItem(CONFIG.storageKey);
+      uiState.loadError = null;
+      uiState.rawBackup = null;
+      state = defaultState();
+      saveState();
+      render();
+    }, { confirmLabel: "Discard & start fresh" });
+  });
+}
+
+/* ============================== RENDER: ONBOARDING ============================== */
+function renderOnboarding() {
+  const canCancel = state && state.characters.length > 0;
+  return `
+    <div class="onboarding-wrap">
+      <div class="onboarding-card panel">
+        <h2>New character</h2>
+        <div class="field"><label>Character name</label><input type="text" id="onboard-name"></div>
+        <div class="field"><label>Class</label><input type="text" id="onboard-class"></div>
+        <div class="row" style="margin-top:6px;">
+          <button id="btn-create-char" class="primary">Create character</button>
+          ${canCancel ? `<button id="btn-cancel-onboard" class="ghost">Cancel</button>` : ""}
+        </div>
+      </div>
+    </div>
+  `;
+}
+function wireOnboarding() {
+  const createBtn = document.getElementById("btn-create-char");
+  if (createBtn) createBtn.addEventListener("click", () => {
+    const name = document.getElementById("onboard-name").value;
+    const cls = document.getElementById("onboard-class").value;
+    createCharacterFromOnboarding(name, cls);
+  });
+  const cancelBtn = document.getElementById("btn-cancel-onboard");
+  if (cancelBtn) cancelBtn.addEventListener("click", () => { uiState.showOnboarding = false; render(); });
+}
+
+/* ============================== RENDER: HEADER ============================== */
+function renderTierMedallion(char) {
+  const tier = char.progression.tier || CONFIG.tierOptions[0];
+  return `
+    <div class="tier-medallion" title="${esc(tier)}">
+      <div class="disc">${esc(tier.charAt(0))}</div>
+      <div class="tier-name">${esc(tier)}</div>
+    </div>
+  `;
+}
+function renderCharSwitcher() {
+  const opts = state.characters.map(c => `<option value="${c.id}" ${c.id === state.activeCharacterId ? "selected" : ""}>${esc(c.identity.name || "Unnamed")}</option>`).join("");
+  return `<select id="char-switcher" class="char-switcher">${opts}</select>`;
+}
+function renderHeader(char) {
+  const multi = state.characters.length > 1;
+  return `
+    <div class="app-header ${char.sessionActive ? "session-active" : ""}">
+      <div class="header-left">
+        ${renderTierMedallion(char)}
+        <div class="char-name-block">
+          <div class="char-name">${esc(char.identity.name || "Unnamed Character")}</div>
+          ${multi ? renderCharSwitcher() : ""}
+        </div>
+      </div>
+      <div class="spacer"></div>
+      <div class="header-right">
+        <button id="btn-new-char" class="ghost">+ New character</button>
+        <button id="btn-export-all" class="ghost">Export</button>
+        <label class="ghost" style="display:inline-flex;align-items:center;padding:7px 14px;border:1px solid rgba(201,162,39,0.35);border-radius:var(--radius);cursor:pointer;font-size:14px;">
+          Import
+          <input type="file" id="import-input" accept="application/json" style="display:none">
+        </label>
+        <button id="btn-toggle-session" class="session-btn ${char.sessionActive ? "danger" : "primary"}">${char.sessionActive ? "End session" : "Start session"}</button>
+      </div>
+    </div>
+  `;
+}
+
+/* ============================== RENDER: SESSION PANEL ============================== */
+function renderSessionPanel(char) {
+  const d = computeDerived(char);
+  const hpPct = clamp((char.current.hp / d.maxHP) * 100, 0, 100);
+  const mpPct = clamp((char.current.mp / d.maxMP) * 100, 0, 100);
+  const inc = char.current.incapacitated;
+  return `
+    <div class="panel session-panel">
+      ${inc ? `<div class="incap-banner">Incapacitated — out of the fight. Recover with a Phoenix Fruit or when the session ends.</div>` : ""}
+      <div class="vessel-row">
+        <div class="vessel">
+          <div class="vessel-tube"><div class="vessel-fill hp" style="height:${hpPct}%"></div></div>
+          <div class="vessel-label">${char.current.hp} / ${d.maxHP} HP</div>
+        </div>
+        <div class="vessel">
+          <div class="vessel-tube"><div class="vessel-fill mp" style="height:${mpPct}%"></div></div>
+          <div class="vessel-label">${char.current.mp} / ${d.maxMP} MP</div>
+        </div>
+        <div class="session-controls">
+          <div class="field"><label>Damage</label><div class="row"><input type="number" id="dmg-input" value="1" style="width:70px;"><button class="danger" data-action="do-damage" ${inc?"disabled":""}>Apply</button></div></div>
+          <div class="field"><label>Heal</label><div class="row"><input type="number" id="heal-input" value="1" style="width:70px;"><button data-action="do-heal" ${inc?"disabled":""}>Apply</button></div></div>
+          <div class="field"><label>Spend MP</label><div class="row"><input type="number" id="mpspend-input" value="1" style="width:70px;"><button data-action="do-mpspend">Apply</button></div></div>
+          <div class="field"><label>Restore MP</label><div class="row"><input type="number" id="mprestore-input" value="1" style="width:70px;"><button data-action="do-mprestore">Apply</button></div></div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:14px;">
+        <input type="text" id="note-input" placeholder="Add a note..." style="flex:1;min-width:160px;">
+        <button data-action="add-note-play">Add note</button>
+        <button data-action="undo-last" ${char.log.length?"":"disabled"}>Undo last</button>
+      </div>
+    </div>
+  `;
+}
+
+/* ============================== RENDER: TABS ============================== */
+const TABS = [
+  ["identity", "Identity"],
+  ["attributes", "Attributes"],
+  ["traits", "Racial Traits"],
+  ["skills", "Skills"],
+  ["inventory", "Inventory"],
+  ["buffs", "Buffs & Debuffs"],
+  ["log", "Event Log"]
+];
+function renderTabs(char) {
+  const tabs = TABS.map(([key,label]) => `<button class="tab-btn ${uiState.activeTab===key?"active":""}" data-action="set-tab" data-id="${key}">${label}</button>`).join("");
+  let body = "";
+  switch (uiState.activeTab) {
+    case "identity": body = renderIdentityTab(char); break;
+    case "attributes": body = renderAttributesTab(char); break;
+    case "traits": body = renderTraitsTab(char); break;
+    case "skills": body = renderSkillsTab(char); break;
+    case "inventory": body = renderInventoryTab(char); break;
+    case "buffs": body = renderBuffsTab(char); break;
+    case "log": body = renderLogTab(char); break;
+    default: body = renderIdentityTab(char);
+  }
+  return `<div class="tabs">${tabs}</div>${body}`;
+}
+
+function renderIdentityTab(char) {
+  const id = char.identity;
+  return `
+    <div class="panel">
+      <h3>Identity</h3>
+      <div class="row" style="align-items:flex-start;">
+        <div class="sprite-block">
+          ${id.sprite ? `<img class="avatar-lg" src="${id.sprite}">` : `<div class="avatar-lg avatar-placeholder">?</div>`}
+          <div class="row" style="margin-top:6px;">
+            <label class="ghost small" style="display:inline-flex;align-items:center;padding:3px 10px;border:1px solid rgba(201,162,39,0.35);border-radius:var(--radius);cursor:pointer;font-size:12px;">
+              Upload photo
+              <input type="file" id="sprite-input" accept="image/*" style="display:none">
+            </label>
+            ${id.sprite ? `<button class="small" data-action="clear-sprite">Remove</button>` : ""}
+          </div>
+        </div>
+        <div class="identity-fields grid-2">
+          <div class="field"><label>Character name</label><input type="text" data-field="identity.name" value="${esc(id.name)}"></div>
+          <div class="field"><label>Class</label><input type="text" data-field="identity.class" value="${esc(id.class)}"></div>
+          <div class="field"><label>Gender</label><input type="text" data-field="identity.gender" value="${esc(id.gender)}"></div>
+          <div class="field"><label>Age</label><input type="text" data-field="identity.age" value="${esc(id.age)}"></div>
+          <div class="field"><label>Race</label><input type="text" data-field="identity.race" value="${esc(id.race)}"></div>
+          <div class="field"><label>Tier</label>
+            <select id="tier-select">
+              ${CONFIG.tierOptions.map(t => `<option value="${esc(t)}" ${t===char.progression.tier?"selected":""}>${esc(t)}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Manage character</h3>
+      <div class="row">
+        <button data-action="dup-char" data-id="${char.id}">Duplicate character</button>
+        <button class="danger" data-action="del-char" data-id="${char.id}">Delete character</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderAttributesTab(char) {
+  const d = computeDerived(char);
+  const attrRows = Object.keys(CONFIG.upCost).map(key => {
+    const cost = CONFIG.upCost[key].pointsPerUP;
+    const rank = char.base[key];
+    let derivedNow, derivedNext, derivedLabel;
+    if (key === "hp") { derivedLabel = "Max HP"; derivedNow = d.maxHP; derivedNext = d.maxHP + cost; }
+    else if (key === "mp") { derivedLabel = "Max MP"; derivedNow = d.maxMP; derivedNext = d.maxMP + cost; }
+    else if (key === "armsPower") { derivedLabel = "Physical damage"; derivedNow = d.physicalDamage; derivedNext = d.physicalDamage + cost*CONFIG.derivedBase.physicalDamagePerArmsPower; }
+    else if (key === "virtuosity") { derivedLabel = "Magic damage"; derivedNow = d.magicDamage; derivedNext = d.magicDamage + cost*CONFIG.derivedBase.magicDamagePerVirtuosity; }
+    else if (key === "resilience") { derivedLabel = "Defense"; derivedNow = d.defense; derivedNext = d.defense + cost*CONFIG.derivedBase.defensePerResilience; }
+    else if (key === "inventoryCapacity") { derivedLabel = "Carry slots"; derivedNow = d.inventoryCapacity; derivedNext = d.inventoryCapacity + cost; }
+    const canMinus = char.base[key] - cost >= CONFIG.startingAttributes[key];
+    const canPlus = char.progression.availableUP >= 1;
+    return `
+      <div class="attr-row">
+        <div class="attr-name">${attrLabel(key)}</div>
+        <div class="attr-stepper">
+          <button class="small" data-action="attr-minus" data-id="${key}" ${canMinus?"":"disabled"}>−</button>
+          <input type="number" class="attr-rank-input" data-attrkey="${key}" value="${rank}">
+          <button class="small" data-action="attr-plus" data-id="${key}" ${canPlus?"":"disabled"}>+</button>
+        </div>
+        <div class="attr-preview">${derivedLabel}: ${derivedNow} → ${derivedNext}</div>
+      </div>
+    `;
+  }).join("");
+  return `
+    <div class="panel">
+      <div class="grid-3">
+        <div class="field"><label>Available UP</label><input type="number" id="available-up-input" value="${char.progression.availableUP}"></div>
+        <div class="field"><label>Accumulated UP</label><input type="number" id="accumulated-up-input" value="${char.progression.accumulatedUP}"></div>
+        <div class="field"><label>Available SP</label><input type="number" id="available-sp-input" value="${char.progression.availableSP}"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Attributes</h3>
+      ${attrRows}
+    </div>
+  `;
+}
+
+function renderTraitsTab(char) {
+  const rows = char.racialTraits.map(t => `
+    <div class="list-item-card">
+      <div class="flex-between">
+        <input type="text" data-field="name" data-list="racialTraits" data-id="${t.id}" value="${esc(t.name)}" style="font-weight:600;flex:1;">
+        <button class="small danger" data-action="del-trait" data-id="${t.id}">Remove</button>
+      </div>
+      <textarea data-field="description" data-list="racialTraits" data-id="${t.id}" rows="2" placeholder="Description">${esc(t.description)}</textarea>
+    </div>
+  `).join("");
+  return `
+    <div class="panel">
+      <h3>Racial Traits</h3>
+      ${rows || `<p class="empty-hint">No traits yet — add your first.</p>`}
+      <button data-action="add-trait" class="primary">Add trait</button>
+    </div>
+  `;
+}
+
+function renderSkillsTab(char) {
+  const rows = char.skills.map(s => `
+    <div class="list-item-card">
+      <div class="flex-between">
+        <input type="text" data-field="name" data-list="skills" data-id="${s.id}" value="${esc(s.name)}" style="font-weight:600;flex:1;">
+        <span class="pill">${s.unlocked ? "Unlocked" : "Locked"}</span>
+        ${s.unlocked ? "" : `<button class="small primary" data-action="unlock-skill" data-id="${s.id}">Unlock (${s.spCost} SP)</button>`}
+        <button class="small danger" data-action="del-skill" data-id="${s.id}">Remove</button>
+      </div>
+      <div class="grid-3" style="margin-top:6px;">
+        <div class="field"><label>Skill point cost</label><input type="number" data-field="spCost" data-list="skills" data-id="${s.id}" value="${s.spCost}" min="0"></div>
+        <div class="field"><label>MP cost</label><input type="number" data-field="mpCost" data-list="skills" data-id="${s.id}" value="${s.mpCost}" min="0"></div>
+        <div class="field"><label>Damage</label><input type="text" data-field="damage" data-list="skills" data-id="${s.id}" value="${esc(s.damage)}"></div>
+      </div>
+      <div class="field"><label>Dice</label><input type="text" data-field="dice" data-list="skills" data-id="${s.id}" value="${esc(s.dice)}"></div>
+      <div class="field"><label>Description</label><input type="text" data-field="description" data-list="skills" data-id="${s.id}" value="${esc(s.description)}"></div>
+    </div>
+  `).join("");
+  return `
+    <div class="panel">
+      <h3>Skills</h3>
+      ${rows || `<p class="empty-hint">No skills yet — add your first.</p>`}
+      <button data-action="add-skill" class="primary">Add skill</button>
+    </div>
+  `;
+}
+
+function renderInventoryTab(char) {
+  const d = computeDerived(char);
+  const used = totalInventoryQty(char);
+  const over = used > d.inventoryCapacity;
+  const rows = char.inventory.map(i => `
+    <div class="list-item-card">
+      <div class="grid-3">
+        <div class="field"><label>Item name</label><input type="text" data-field="name" data-list="inventory" data-id="${i.id}" value="${esc(i.name)}"></div>
+        <div class="field"><label>Quantity</label><input type="number" data-field="qty" data-list="inventory" data-id="${i.id}" value="${i.qty}" min="0"></div>
+        <div class="field"><label>Item type</label>
+          <select data-field="type" data-list="inventory" data-id="${i.id}">
+            ${CONFIG.inventoryTypes.map(t => `<option value="${esc(t)}" ${t===i.type?"selected":""}>${esc(t)}</option>`).join("")}
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Description</label><input type="text" data-field="description" data-list="inventory" data-id="${i.id}" value="${esc(i.description || "")}"></div>
+      <button class="small danger" data-action="del-item" data-id="${i.id}">Remove</button>
+    </div>
+  `).join("");
+  return `
+    <div class="panel">
+      <h3>Inventory <span class="${over?"over-cap":"muted"}">${used} / ${d.inventoryCapacity} slots used${over?" — over capacity":""}</span></h3>
+      ${rows || `<p class="empty-hint">No items yet — add your first.</p>`}
+      <div class="grid-3" style="margin-top:10px;">
+        <div class="field"><label>Item name</label><input type="text" id="new-item-name"></div>
+        <div class="field"><label>Quantity</label><input type="number" id="new-item-qty" value="1" min="0"></div>
+        <div class="field"><label>Item type</label>
+          <select id="new-item-type">${CONFIG.inventoryTypes.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("")}</select>
+        </div>
+      </div>
+      <div class="field"><label>Description</label><input type="text" id="new-item-desc"></div>
+      <button data-action="add-item" class="primary">Add item</button>
+    </div>
+  `;
+}
+
+function renderBuffsTab(char) {
+  const rows = char.buffs.map(b => `
+    <div class="list-item-card">
+      <div class="flex-between">
+        <span class="pill ${b.kind}">${b.kind}</span>
+        <b style="flex:1;">${esc(b.name)}</b>
+        <span class="muted">${b.duration ? esc(b.duration) : "indefinite"}</span>
+        <button class="small danger" data-action="del-buff" data-id="${b.id}">Remove</button>
+      </div>
+      ${b.description ? `<div class="muted" style="margin-top:4px;">${esc(b.description)}</div>` : ""}
+    </div>
+  `).join("");
+  return `
+    <div class="panel">
+      <h3>Buffs &amp; Debuffs</h3>
+      ${rows || `<p class="empty-hint">Nothing active right now.</p>`}
+      <div class="grid-2" style="margin-top:8px;">
+        <div class="field"><label>Kind</label><select id="new-buff-kind"><option value="buff">Buff</option><option value="debuff">Debuff</option></select></div>
+        <div class="field"><label>Name</label><input type="text" id="new-buff-name"></div>
+      </div>
+      <div class="field"><label>Description</label><input type="text" id="new-buff-desc"></div>
+      <div class="field"><label>Duration (leave blank for indefinite)</label><input type="text" id="new-buff-duration"></div>
+      <button data-action="add-buff" class="primary">Add buff or debuff</button>
+    </div>
+  `;
+}
+
+function renderLogTab(char) {
+  const rows = char.log.map(e => `
+    <div class="log-entry">
+      <span class="ts">${new Date(e.timestamp).toLocaleString()}</span>
+      <span class="type">${e.type}</span>
+      <span>${esc(e.detail && e.detail.message ? e.detail.message : "")}</span>
+    </div>
+  `).join("");
+  return `
+    <div class="panel">
+      <div class="flex-between"><h3>Event Log</h3><button data-action="undo-last" ${char.log.length?"":"disabled"}>Undo last</button></div>
+      ${rows || `<p class="empty-hint">Nothing logged yet.</p>`}
+    </div>
+  `;
+}
+
+/* ============================== EVENT WIRING ============================== */
+function wireEvents() {
+  const root = document.getElementById("app");
+
+  root.querySelectorAll("[data-action]").forEach(el => el.addEventListener("click", handleAction));
+  root.querySelectorAll('[id^="btn-"]').forEach(el => el.addEventListener("click", handleAction));
+  root.querySelectorAll("[data-field]:not([data-list])").forEach(el => el.addEventListener("change", handleIdentityField));
+  root.querySelectorAll("[data-field][data-list]").forEach(el => el.addEventListener("change", handleListField));
+  root.querySelectorAll(".attr-rank-input").forEach(el => {
+    el.addEventListener("change", e => editAttributeRank(getActiveChar(), e.target.dataset.attrkey, e.target.value));
+  });
+
+  const importInput = document.getElementById("import-input");
+  if (importInput) importInput.addEventListener("change", e => { if (e.target.files[0]) importFile(e.target.files[0]); });
+
+  const spriteInput = document.getElementById("sprite-input");
+  if (spriteInput) spriteInput.addEventListener("change", e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { getActiveChar().identity.sprite = reader.result; persistAndRender(); };
+    reader.readAsDataURL(file);
+  });
+
+  const charSwitcher = document.getElementById("char-switcher");
+  if (charSwitcher) charSwitcher.addEventListener("change", e => selectCharacter(e.target.value));
+
+  const tierSelect = document.getElementById("tier-select");
+  if (tierSelect) tierSelect.addEventListener("change", e => { getActiveChar().progression.tier = e.target.value; persistAndRender(); });
+
+  const availUP = document.getElementById("available-up-input");
+  if (availUP) availUP.addEventListener("change", e => {
+    const char = getActiveChar();
+    char.progression.availableUP = Math.max(0, Math.floor(Number(e.target.value)) || 0);
+    persistAndRender();
+  });
+  const accumUP = document.getElementById("accumulated-up-input");
+  if (accumUP) accumUP.addEventListener("change", e => {
+    const char = getActiveChar();
+    char.progression.accumulatedUP = Math.max(0, Math.floor(Number(e.target.value)) || 0);
+    persistAndRender();
+  });
+  const availSP = document.getElementById("available-sp-input");
+  if (availSP) availSP.addEventListener("change", e => {
+    const char = getActiveChar();
+    char.progression.availableSP = Math.floor(Number(e.target.value)) || 0;
+    persistAndRender();
+  });
+}
+
+function handleIdentityField(e) {
+  const char = getActiveChar();
+  const path = e.target.dataset.field.split(".");
+  char[path[0]][path[1]] = e.target.value;
+  persistAndRender();
+}
+function handleListField(e) {
+  const char = getActiveChar();
+  const listName = e.target.dataset.list;
+  const id = e.target.dataset.id;
+  const field = e.target.dataset.field;
+  const item = char[listName].find(x => x.id === id);
+  if (!item) return;
+  let val = e.target.value;
+  if (e.target.type === "number") val = Number(val) || 0;
+  item[field] = val;
+  persistAndRender();
+}
+
+function handleAction(e) {
+  const action = e.currentTarget.dataset.action;
+  const id = e.currentTarget.dataset.id;
+  const char = getActiveChar();
+
+  switch (action) {
+    case "select-char": selectCharacter(id); break;
+    case "dup-char": duplicateCharacter(id); break;
+    case "del-char": deleteCharacter(id); break;
+    case "set-tab": uiState.activeTab = id; render(); break;
+    case "clear-sprite": char.identity.sprite = null; persistAndRender(); break;
+    case "attr-plus": changeAttribute(char, id, 1); break;
+    case "attr-minus": changeAttribute(char, id, -1); break;
+    case "del-trait": char.racialTraits = char.racialTraits.filter(t => t.id !== id); persistAndRender(); break;
+    case "add-trait": char.racialTraits.push({ id: uid(), name: "New trait", description: "" }); persistAndRender(); break;
+    case "unlock-skill": unlockSkill(char, id); break;
+    case "del-skill": char.skills = char.skills.filter(s => s.id !== id); persistAndRender(); break;
+    case "add-skill": char.skills.push({ id: uid(), name: "New skill", spCost: 1, mpCost: 0, description: "", damage: "", dice: "", unlocked: false }); persistAndRender(); break;
+    case "del-item": removeInventoryItem(char, id); break;
+    case "add-item": {
+      const name = document.getElementById("new-item-name").value;
+      const qty = document.getElementById("new-item-qty").value;
+      const type = document.getElementById("new-item-type").value;
+      const desc = document.getElementById("new-item-desc").value;
+      addInventoryItem(char, name, qty, type, desc);
+      break;
+    }
+    case "del-buff": removeBuffFn(char, id); break;
+    case "add-buff": {
+      const kind = document.getElementById("new-buff-kind").value;
+      const name = document.getElementById("new-buff-name").value;
+      const desc = document.getElementById("new-buff-desc").value;
+      const dur = document.getElementById("new-buff-duration").value;
+      addBuff(char, kind, name, desc, dur);
+      break;
+    }
+    case "do-damage": takeDamage(char, Number(document.getElementById("dmg-input").value) || 0); break;
+    case "do-heal": healChar(char, Number(document.getElementById("heal-input").value) || 0); break;
+    case "do-mpspend": spendMP(char, Number(document.getElementById("mpspend-input").value) || 0); break;
+    case "do-mprestore": restoreMP(char, Number(document.getElementById("mprestore-input").value) || 0); break;
+    case "add-note-play": addNote(char, document.getElementById("note-input").value); break;
+    case "undo-last": undoLast(char); break;
+    default: break;
+  }
+
+  switch (e.currentTarget.id) {
+    case "btn-new-char": openOnboarding(); break;
+    case "btn-toggle-session":
+      if (char.sessionActive) {
+        showConfirm("End the session? This restores MP, revives anyone incapacitated, and clears expired effects.", () => endSession(char), { confirmLabel: "End session", danger: false });
+      } else {
+        startSession(char);
+      }
+      break;
+    case "btn-export-all": exportAll(); break;
+  }
+}
+
+/* ============================== INIT ============================== */
+loadState();
+render();
+</script>
+</body>
+</html>
