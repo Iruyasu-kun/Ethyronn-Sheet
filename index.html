@@ -97,6 +97,7 @@ h1,h2,h3,h4,p{margin:0}
   background:rgba(12,21,38,0.6);border:1px solid var(--border-default);
   border-radius:var(--radius-md);padding:0 var(--space-md);
   transition:border-color var(--dur-fast) var(--ease-standard),box-shadow var(--dur-fast) var(--ease-standard)}
+.ci-inputbox:hover:not(:focus-within){border-color:var(--border-strong)}
 .ci-inputbox:focus-within{border-color:var(--border-strong);box-shadow:var(--glow-gold)}
 .ci-inputbox > input,.ci-inputbox > textarea{flex:1;min-width:0;background:transparent;border:none;
   outline:none;color:var(--text-primary);font-size:16px;line-height:24px;padding:12px 0}
@@ -192,6 +193,9 @@ h1,h2,h3,h4,p{margin:0}
 .g2{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
 .g3{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
 .g4{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+/* Attributes panel. auto-fill, not auto-fit, so the progression row keeps the
+   same tracks as the attribute row below it and their column edges line up. */
+.g-attr{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
 .row{padding:var(--space-lg) 0;border-top:1px solid rgba(194,163,104,0.12)}
 .row:first-of-type{border-top:none}
 .rowtop{display:flex;align-items:center;gap:var(--space-xs);flex-wrap:wrap;
@@ -257,6 +261,12 @@ h1,h2,h3,h4,p{margin:0}
 .dmg{display:flex;gap:var(--space-xl);flex-wrap:wrap;margin-top:var(--space-2xs)}
 .dmg-item{font-size:16px;font-weight:500;color:var(--text-secondary)}
 .dmg-num{font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+
+/* An attack's written effect on the Combat card. Set apart with a rule and an
+   italic so it reads as prose beside the tabular stat lines above it. */
+.attack-note{margin-top:var(--space-sm);padding-left:var(--space-sm);
+  border-left:2px solid var(--accent-soft);font-size:14px;line-height:20px;
+  font-style:italic;color:var(--text-secondary);white-space:pre-wrap}
 
 .portrait{width:100%;aspect-ratio:2/3;border:1px solid var(--border-default);
   border-radius:var(--radius-lg);background:rgba(12,21,38,0.6);overflow:hidden;
@@ -566,7 +576,8 @@ function migrate(raw) {
         id: w.id || uid(), name: w.name || "Unarmed",
         damageTypes: w.damageTypes || toTypes(w.attr),
         normal: num(w.normal), crit: num(w.crit),
-        dice: w.dice || "", element: w.element || "none"
+        dice: w.dice || "", element: w.element || "none",
+        description: w.description || w.notes || ""
       };
     });
     var skills = (c.skills || []).map(function (s) {
@@ -623,7 +634,8 @@ function normalize(c) {
         id: w.id || uid(), name: w.name || "Unarmed",
         damageTypes: Array.isArray(w.damageTypes) ? w.damageTypes.slice() : [],
         normal: num(w.normal), crit: num(w.crit),
-        dice: w.dice || "", element: ELEMENTS[w.element] ? w.element : "none"
+        dice: w.dice || "", element: ELEMENTS[w.element] ? w.element : "none",
+        description: w.description || ""
       };
     }),
     skills: (c.skills || []).map(function (s) {
@@ -820,7 +832,7 @@ function h(tag, props, kids) {
   });
   return el;
 }
-function svgIcon(paths, size) {
+function svgIcon(paths, size, stroke) {
   var ns = "http://www.w3.org/2000/svg";
   var s = document.createElementNS(ns, "svg");
   s.setAttribute("width", size || 20);
@@ -828,7 +840,7 @@ function svgIcon(paths, size) {
   s.setAttribute("viewBox", "0 0 24 24");
   s.setAttribute("fill", "none");
   s.setAttribute("stroke", "currentColor");
-  s.setAttribute("stroke-width", "2");
+  s.setAttribute("stroke-width", String(stroke || 2));
   s.setAttribute("stroke-linecap", "round");
   s.setAttribute("stroke-linejoin", "round");
   s.setAttribute("aria-hidden", "true");
@@ -842,7 +854,9 @@ function svgIcon(paths, size) {
 /* 20px so it sits inside both the 32px and 40px button heights untouched. */
 function plusIcon() { return svgIcon(["M12 5v14", "M5 12h14"], 20); }
 function checkIcon() { return svgIcon(["M20 6 9 17l-5-5"], 12); }
-function caretIcon() { return svgIcon(["m6 9 6 6 6-6"], 16); }
+/* 1.5 to match the 400-weight value it sits beside; the plus sits beside
+   600-weight button text and stays at 2. */
+function caretIcon() { return svgIcon(["m6 9 6 6 6-6"], 16, 1.5); }
 function closeIcon() { return svgIcon(["M18 6 6 18", "M6 6l12 12"], 20); }
 
 /* Live-updating readouts. Each render collects [node, fn] pairs so a
@@ -1002,11 +1016,12 @@ function render() {
   if (c) {
     var items = [
       { value: "character", label: "Character" },
-      { value: "arsenal", label: "Arsenal" },
+      { value: "gears", label: "Gears" },
+      { value: "skills", label: "Skills" },
       { value: "inventory", label: "Inventory" },
       { value: "log", label: "Activity" }
     ];
-    if (c.sessionActive) items.splice(3, 0, { value: "combat", label: "Combat" });
+    if (c.sessionActive) items.splice(4, 0, { value: "combat", label: "Combat" });
     if (S.tab === "combat" && !c.sessionActive) S.tab = "character";
 
     app.appendChild(h("div", { style: "margin-bottom:24px" }, [
@@ -1014,7 +1029,8 @@ function render() {
     ]));
 
     if (S.tab === "character") CharacterTab(app, c);
-    else if (S.tab === "arsenal") ArsenalTab(app, c);
+    else if (S.tab === "gears") GearsTab(app, c);
+    else if (S.tab === "skills") SkillsTab(app, c);
     else if (S.tab === "inventory") InventoryTab(app, c);
     else if (S.tab === "combat") CombatTab(app, c);
     else if (S.tab === "log") LogTab(app, c);
@@ -1182,7 +1198,7 @@ function CharacterTab(app, c) {
 
   /* Attributes */
   var equipped = c.inventory.filter(function (i) { return i.type === "Equipment" && i.equipped; });
-  var attrGrid = h("div", { class: "grid g2" }, ATTRS.map(function (k) {
+  var attrGrid = h("div", { class: "grid g-attr" }, ATTRS.map(function (k) {
     var notes = equipped.filter(function (i) {
       return (i.effects || []).indexOf(k) !== -1 && num(i.bonuses[k]) !== 0;
     }).map(function (i) {
@@ -1202,7 +1218,7 @@ function CharacterTab(app, c) {
   app.appendChild(h("div", { class: "panel" }, [
     h("div", { class: "panel-head" }, [h("h2", { class: "panel-title", text: "Attributes" })]),
     h("div", { style: "display:flex;flex-direction:column;gap:16px" }, [
-      h("div", { class: "grid g4" }, [
+      h("div", { class: "grid g-attr" }, [
         progField(c, "availableUP", "Available UP"),
         progField(c, "accumulatedUP", "Accumulated UP"),
         progField(c, "availableSP", "Available SP")
@@ -1295,7 +1311,10 @@ function statCell(c, def, part) {
   });
   return input;
 }
-/* ---------------- Arsenal ---------------- */
+/* ---------------- Gears, Skills, Inventory ----------------
+   Weapons and equipment sit together under Gears: both are things you take
+   into a fight and both feed the Combat tab. Skills and carried items each
+   hold a tab of their own. */
 function totalDamage(labelNormal, labelCrit) {
   return h("div", { style: "margin-top:16px" }, [
     h("div", { class: "subhead", style: "margin-bottom:4px", text: "Total damage" }),
@@ -1306,8 +1325,32 @@ function totalDamage(labelNormal, labelCrit) {
   ]);
 }
 
-function ArsenalTab(app, c) {
-  /* Weapons. No equip state: every weapon on the sheet is available. */
+function numField(c, row, key, label) {
+  return Input({
+    label: label, numeric: true, value: row[key],
+    onInput: function (v) {
+      mutate(function () {
+        row[key] = num(v);
+        if (key === "hits") row.hits = Math.max(1, num(row.hits) || 1);
+      }, null, { quiet: true });
+    }
+  });
+}
+
+/* Equipment occupies the same capacity as anything else carried, so the
+   Gears and Inventory panels quote one identical figure. */
+function slotNote(c) {
+  function textOf() { return c.inventory.length + " of " + derived(c).capacity + " slots"; }
+  return live(h("span", {
+    class: "panel-note",
+    style: "font-variant-numeric:tabular-nums",
+    text: textOf()
+  }), textOf);
+}
+
+/* ---------------- Weapons ---------------- */
+function weaponsPanel(c) {
+  /* No equip state: every weapon on the sheet is available. */
   var wlist = h("div", {}, c.weapons.map(function (w) {
     function tn() { return String(num(w.normal) + sourceBonus(w.damageTypes, derived(c))); }
     function tc() { return String(num(w.crit) + sourceBonus(w.damageTypes, derived(c))); }
@@ -1337,7 +1380,7 @@ function ArsenalTab(app, c) {
       h("div", { class: "grid g2", style: "margin-bottom:16px" }, [
         numField(c, w, "normal", "Normal damage"), numField(c, w, "crit", "Critical damage")
       ]),
-      h("div", { class: "grid g2" }, [
+      h("div", { class: "grid g2", style: "margin-bottom:16px" }, [
         Select({
           label: "Element", options: elementOptions(), value: w.element,
           onChange: function (v) { mutate(function () { w.element = v; }); }
@@ -1347,6 +1390,13 @@ function ArsenalTab(app, c) {
           onInput: function (v) { mutate(function () { w.dice = v; }, null, { quiet: true }); }
         })
       ]),
+      /* Free text, because a special effect the sheet cannot resolve still
+         has to be readable mid-battle. It is carried onto the Combat card. */
+      Input({
+        label: "Weapon description", multiline: true, rows: 2, value: w.description,
+        placeholder: "On a critical, the target burns for 2 turns.",
+        onInput: function (v) { mutate(function () { w.description = v; }, null, { quiet: true }); }
+      }),
       totalDamage(
         live(h("span", { class: "dmg-num", text: tn() }), tn),
         live(h("span", { class: "dmg-num", text: tc() }), tc)
@@ -1357,7 +1407,7 @@ function ArsenalTab(app, c) {
     wlist.appendChild(h("p", { class: "empty", text: "No weapons yet. Add one to see its resolved damage." }));
   }
 
-  app.appendChild(h("div", { class: "panel" }, [
+  return h("div", { class: "panel" }, [
     h("div", { class: "panel-head" }, [
       h("h2", { class: "panel-title", text: "Weapons" }),
       Button({
@@ -1366,173 +1416,18 @@ function ArsenalTab(app, c) {
           mutate(function (x) {
             x.weapons.push({
               id: uid(), name: "New weapon", damageTypes: ["armsPower"],
-              normal: 0, crit: 0, dice: "", element: "none"
+              normal: 0, crit: 0, dice: "", element: "none", description: ""
             });
           });
         }
       })
     ]),
     wlist
-  ]));
-
-  /* Skills */
-  var slist = h("div", {}, c.skills.map(function (s) {
-    function hits() { return Math.max(1, num(s.hits) || 1); }
-    function tn() { return String((num(s.normal) + sourceBonus(s.damageTypes, derived(c))) * hits()); }
-    function tc() { return String((num(s.crit) + sourceBonus(s.damageTypes, derived(c))) * hits()); }
-    return h("div", { class: "row" }, [
-      h("div", { class: "rowtop" }, [
-        h("div", { style: "flex:1 1 220px;min-width:0" }, [
-          Input({
-            label: "Skill", value: s.name,
-            onInput: function (v) { mutate(function () { s.name = v; }, null, { quiet: true }); }
-          })
-        ]),
-        Button({
-          variant: "danger", size: "sm", label: "Remove",
-          onClick: function () {
-            mutate(function (x) { x.skills = x.skills.filter(function (r) { return r.id !== s.id; }); });
-          }
-        })
-      ]),
-      /* Row 1: damage type, normal, critical */
-      h("div", { class: "grid g2", style: "margin-bottom:16px" }, [
-        MultiSelect({
-          label: "Damage type", menuKey: "s:" + s.id, options: DMG_SOURCES,
-          selected: s.damageTypes, emptyLabel: "Flat damage only",
-          onToggle: function (v) { mutate(function () { toggleIn(s.damageTypes, v); }); }
-        }),
-        numField(c, s, "normal", "Normal damage"),
-        numField(c, s, "crit", "Critical damage")
-      ]),
-      /* Row 2: element, MP cost, hits, dice */
-      h("div", { class: "grid g3", style: "margin-bottom:16px" }, [
-        Select({
-          label: "Element", options: elementOptions(), value: s.element,
-          onChange: function (v) { mutate(function () { s.element = v; }); }
-        }),
-        numField(c, s, "mpCost", "MP cost"),
-        numField(c, s, "hits", "Hits"),
-        Input({
-          label: "Dice", value: s.dice, placeholder: "D20+10",
-          onInput: function (v) { mutate(function () { s.dice = v; }, null, { quiet: true }); }
-        })
-      ]),
-      /* Row 3: description */
-      Input({
-        label: "Skill description", multiline: true, rows: 2, value: s.description,
-        onInput: function (v) { mutate(function () { s.description = v; }, null, { quiet: true }); }
-      }),
-      totalDamage(
-        live(h("span", { class: "dmg-num", text: tn() }), tn),
-        live(h("span", { class: "dmg-num", text: tc() }), tc)
-      )
-    ]);
-  }));
-  if (!c.skills.length) {
-    slist.appendChild(h("p", { class: "empty", text: "No skills yet. Add one to track its cost and damage." }));
-  }
-
-  app.appendChild(h("div", { class: "panel" }, [
-    h("div", { class: "panel-head" }, [
-      h("h2", { class: "panel-title", text: "Skills" }),
-      Button({
-        variant: "primary", size: "sm", label: "Add skill", iconLeft: plusIcon(),
-        onClick: function () {
-          mutate(function (x) {
-            x.skills.push({
-              id: uid(), name: "New skill", damageTypes: [], normal: 0, crit: 0,
-              hits: 1, mpCost: 0, dice: "", element: "none", description: ""
-            });
-          });
-        }
-      })
-    ]),
-    slist
-  ]));
+  ]);
 }
 
-function numField(c, row, key, label) {
-  return Input({
-    label: label, numeric: true, value: row[key],
-    onInput: function (v) {
-      mutate(function () {
-        row[key] = num(v);
-        if (key === "hits") row.hits = Math.max(1, num(row.hits) || 1);
-      }, null, { quiet: true });
-    }
-  });
-}
-
-/* ---------------- Inventory ---------------- */
-function InventoryTab(app, c) {
-  var d = derived(c);
-  var carried = c.inventory.filter(function (i) { return i.type !== "Equipment"; });
-
-  var clist = h("div", {}, carried.map(function (i) {
-    return h("div", { class: "row", style: "padding:16px 0" }, [
-      /* Row 1: name and type. Names run long, so they get their own row. */
-      h("div", { class: "grid g2", style: "margin-bottom:16px" }, [
-        Input({
-          label: "Item name", value: i.name,
-          onInput: function (v) { mutate(function () { i.name = v; }, null, { quiet: true }); }
-        }),
-        Select({
-          label: "Item type", options: opts(ITEM_TYPES), value: i.type,
-          onChange: function (v) {
-            mutate(function () { i.type = v; if (v !== "Equipment") i.equipped = false; });
-          }
-        })
-      ]),
-      /* Row 2: description and remove. Deliberately not full width. */
-      h("div", { style: "display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap" }, [
-        h("div", { style: "flex:1 1 320px;min-width:0" }, [
-          Input({
-            label: "Description", value: i.description,
-            onInput: function (v) { mutate(function () { i.description = v; }, null, { quiet: true }); }
-          })
-        ]),
-        Button({
-          variant: "danger", size: "sm", label: "Remove",
-          onClick: function () {
-            mutate(function (x) { x.inventory = x.inventory.filter(function (r) { return r.id !== i.id; }); });
-          }
-        })
-      ])
-    ]);
-  }));
-  if (!carried.length) {
-    clist.appendChild(h("p", { class: "empty", text: "Nothing carried yet." }));
-  }
-
-  app.appendChild(h("div", { class: "panel" }, [
-    h("div", { class: "panel-head", style: "margin-bottom:8px" }, [
-      h("h2", { class: "panel-title", text: "Carried" }),
-      live(h("span", {
-        class: "panel-note",
-        style: "font-variant-numeric:tabular-nums",
-        text: c.inventory.length + " of " + d.capacity + " slots"
-      }), function () {
-        return c.inventory.length + " of " + derived(c).capacity + " slots";
-      })
-    ]),
-    clist,
-    h("div", { style: "margin-top:24px" }, [
-      Button({
-        variant: "primary", size: "sm", label: "Add item", iconLeft: plusIcon(),
-        onClick: function () {
-          mutate(function (x) {
-            x.inventory.push({
-              id: uid(), name: "New item", type: "Consumable", gearType: "Accessory",
-              description: "", equipped: false, effects: [], bonuses: blankBonuses()
-            });
-          });
-        }
-      })
-    ])
-  ]));
-
-  /* Equipment */
+/* ---------------- Equipment ---------------- */
+function equipmentPanel(c) {
   var gear = c.inventory.filter(function (i) { return i.type === "Equipment"; });
   var glist = h("div", {}, gear.map(function (g) {
     var effects = g.effects || [];
@@ -1593,7 +1488,18 @@ function InventoryTab(app, c) {
             }
           });
         }))
-      ]) : null
+      ]) : null,
+      /* Back to Inventory. The carried list can send an item here by changing
+         its type, so the trip has to run both ways. */
+      h("div", { style: "margin-top:16px" }, [
+        Button({
+          variant: "ghost", size: "sm", label: "Move to Inventory",
+          onClick: function () {
+            mutate(function () { g.type = "Miscellaneous"; g.equipped = false; });
+            toast((g.name || "Item") + " moved to Inventory.");
+          }
+        })
+      ])
     ]);
   }));
   if (!gear.length) {
@@ -1603,8 +1509,8 @@ function InventoryTab(app, c) {
     }));
   }
 
-  app.appendChild(h("div", { class: "panel" }, [
-    h("div", { class: "panel-head", style: "margin-bottom:8px" }, [
+  return h("div", { class: "panel" }, [
+    h("div", { class: "panel-head" }, [
       h("h2", { class: "panel-title", text: "Equipment" }),
       Button({
         variant: "primary", size: "sm", label: "Add equipment", iconLeft: plusIcon(),
@@ -1618,7 +1524,164 @@ function InventoryTab(app, c) {
         }
       })
     ]),
+    h("p", {
+      class: "panel-note", style: "margin:-16px 0 16px",
+      text: "Equipment takes an inventory slot like anything else carried."
+    }),
     glist
+  ]);
+}
+
+function GearsTab(app, c) {
+  app.appendChild(weaponsPanel(c));
+  app.appendChild(equipmentPanel(c));
+}
+
+/* ---------------- Skills ---------------- */
+function SkillsTab(app, c) {
+  var slist = h("div", {}, c.skills.map(function (s) {
+    function hits() { return Math.max(1, num(s.hits) || 1); }
+    function tn() { return String((num(s.normal) + sourceBonus(s.damageTypes, derived(c))) * hits()); }
+    function tc() { return String((num(s.crit) + sourceBonus(s.damageTypes, derived(c))) * hits()); }
+    return h("div", { class: "row" }, [
+      h("div", { class: "rowtop" }, [
+        h("div", { style: "flex:1 1 220px;min-width:0" }, [
+          Input({
+            label: "Skill", value: s.name,
+            onInput: function (v) { mutate(function () { s.name = v; }, null, { quiet: true }); }
+          })
+        ]),
+        Button({
+          variant: "danger", size: "sm", label: "Remove",
+          onClick: function () {
+            mutate(function (x) { x.skills = x.skills.filter(function (r) { return r.id !== s.id; }); });
+          }
+        })
+      ]),
+      /* Row 1: damage type, normal, critical */
+      h("div", { class: "grid g2", style: "margin-bottom:16px" }, [
+        MultiSelect({
+          label: "Damage type", menuKey: "s:" + s.id, options: DMG_SOURCES,
+          selected: s.damageTypes, emptyLabel: "Flat damage only",
+          onToggle: function (v) { mutate(function () { toggleIn(s.damageTypes, v); }); }
+        }),
+        numField(c, s, "normal", "Normal damage"),
+        numField(c, s, "crit", "Critical damage")
+      ]),
+      /* Row 2: element, MP cost, hits, dice */
+      h("div", { class: "grid g3", style: "margin-bottom:16px" }, [
+        Select({
+          label: "Element", options: elementOptions(), value: s.element,
+          onChange: function (v) { mutate(function () { s.element = v; }); }
+        }),
+        numField(c, s, "mpCost", "MP cost"),
+        numField(c, s, "hits", "Hits"),
+        Input({
+          label: "Dice", value: s.dice, placeholder: "D20+10",
+          onInput: function (v) { mutate(function () { s.dice = v; }, null, { quiet: true }); }
+        })
+      ]),
+      /* Row 3: description */
+      Input({
+        label: "Skill description", multiline: true, rows: 2, value: s.description,
+        placeholder: "Stuns the target for a turn on a critical.",
+        onInput: function (v) { mutate(function () { s.description = v; }, null, { quiet: true }); }
+      }),
+      totalDamage(
+        live(h("span", { class: "dmg-num", text: tn() }), tn),
+        live(h("span", { class: "dmg-num", text: tc() }), tc)
+      )
+    ]);
+  }));
+  if (!c.skills.length) {
+    slist.appendChild(h("p", { class: "empty", text: "No skills yet. Add one to track its cost and damage." }));
+  }
+
+  app.appendChild(h("div", { class: "panel" }, [
+    h("div", { class: "panel-head" }, [
+      h("h2", { class: "panel-title", text: "Skills" }),
+      Button({
+        variant: "primary", size: "sm", label: "Add skill", iconLeft: plusIcon(),
+        onClick: function () {
+          mutate(function (x) {
+            x.skills.push({
+              id: uid(), name: "New skill", damageTypes: [], normal: 0, crit: 0,
+              hits: 1, mpCost: 0, dice: "", element: "none", description: ""
+            });
+          });
+        }
+      })
+    ]),
+    slist
+  ]));
+}
+
+/* ---------------- Inventory ---------------- */
+function InventoryTab(app, c) {
+  var carried = c.inventory.filter(function (i) { return i.type !== "Equipment"; });
+
+  var clist = h("div", {}, carried.map(function (i) {
+    return h("div", { class: "row", style: "padding:16px 0" }, [
+      /* Row 1: name and type. Names run long, so they get their own row. */
+      h("div", { class: "grid g2", style: "margin-bottom:16px" }, [
+        Input({
+          label: "Item name", value: i.name,
+          onInput: function (v) { mutate(function () { i.name = v; }, null, { quiet: true }); }
+        }),
+        Select({
+          label: "Item type", options: opts(ITEM_TYPES), value: i.type,
+          onChange: function (v) {
+            mutate(function () { i.type = v; if (v !== "Equipment") i.equipped = false; });
+            /* Equipment lives under Gears, so say where the item went rather
+               than letting it vanish out of the list. */
+            if (v === "Equipment") toast((i.name || "Item") + " moved to Gears.");
+          }
+        })
+      ]),
+      /* Row 2: description and remove. Deliberately not full width. */
+      h("div", { style: "display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap" }, [
+        h("div", { style: "flex:1 1 320px;min-width:0" }, [
+          Input({
+            label: "Description", value: i.description,
+            onInput: function (v) { mutate(function () { i.description = v; }, null, { quiet: true }); }
+          })
+        ]),
+        Button({
+          variant: "danger", size: "sm", label: "Remove",
+          onClick: function () {
+            mutate(function (x) { x.inventory = x.inventory.filter(function (r) { return r.id !== i.id; }); });
+          }
+        })
+      ])
+    ]);
+  }));
+  if (!carried.length) {
+    clist.appendChild(h("p", { class: "empty", text: "Nothing carried yet." }));
+  }
+
+  app.appendChild(h("div", { class: "panel" }, [
+    h("div", { class: "panel-head", style: "margin-bottom:8px" }, [
+      h("h2", { class: "panel-title", text: "Carried" }),
+      slotNote(c)
+    ]),
+    h("p", {
+      class: "panel-note", style: "margin-bottom:16px",
+      text: "Equipment is counted here too, and is edited under Gears."
+    }),
+    clist,
+    h("div", { style: "margin-top:24px" }, [
+      Button({
+        variant: "primary", size: "sm", label: "Add item", iconLeft: plusIcon(),
+        onClick: function () {
+          mutate(function (x) {
+            x.inventory.push({
+              id: uid(), name: "New item", type: "Consumable", gearType: "Accessory",
+              description: "", equipped: false, effects: [], bonuses: blankBonuses()
+            });
+          });
+        }
+      })
+    ])
   ]));
 }
 
@@ -1641,6 +1704,7 @@ function attackList(c) {
     if (mpCost) lines.push({ label: "MP cost", value: String(mpCost) });
     return {
       name: row.name || "Unnamed", kindLabel: kindLabel, element: row.element,
+      description: row.description || "",
       relation: m.relation, reason: m.reason, multiplier: m.multiplier, die: die,
       showBonus: m.relation === "advantage" && m.multiplier > 0,
       lines: lines,
@@ -1750,7 +1814,7 @@ function CombatTab(app, c) {
   var attacks = attackList(c);
   if (!attacks.length) {
     app.appendChild(h("div", { class: "panel" }, [
-      h("p", { class: "empty", text: "Nothing to attack with yet. Add a weapon or a damaging skill under Arsenal." })
+      h("p", { class: "empty", text: "Nothing to attack with yet. Add a weapon under Gears, or a damaging skill under Skills." })
     ]));
   }
 
@@ -1776,6 +1840,8 @@ function CombatTab(app, c) {
             h("span", { text: l.label }), h("span", { text: l.value })
           ]);
         })),
+      /* Whatever the sheet cannot resolve, the player reads here. */
+      a.description ? h("p", { class: "attack-note", text: a.description }) : null,
       /* Advantage is stated as a formula. The dice are rolled at the table,
          so the sheet never rolls for you. */
       a.showBonus ? h("div", {
@@ -1950,7 +2016,10 @@ function doCreate() {
   var c = normalize({
     id: uid(),
     identity: { name: S.newName.trim(), class: S.newClass.trim(), element: "none" },
-    weapons: [{ id: uid(), name: "Unarmed", damageTypes: ["armsPower"], normal: 0, crit: 0, element: "none" }],
+    weapons: [{
+      id: uid(), name: "Unarmed", damageTypes: ["armsPower"],
+      normal: 0, crit: 0, element: "none", description: ""
+    }],
     inventory: [
       { id: uid(), name: "HP Potion", type: "Consumable" },
       { id: uid(), name: "MP Potion", type: "Consumable" },
